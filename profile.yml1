@@ -1,0 +1,24 @@
+my_new_project:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: service-account
+      project: photons-377606
+      dataset: Photons_MPA_External_Tables
+      location: asia-southeast1
+      threads: 4
+      # keyfile: /path/to/your/service-account.json
+      # timeout_seconds: 300
+      priority: interactive
+
+    prod:
+      type: bigquery
+      method: service-account
+      project: photons-377606
+      dataset: MPA_External_Tables
+      location: asia-southeast1
+      threads: 8
+      # keyfile: /path/to/your/service-account.json
+      timeout_seconds: 300
+      priority: batch
