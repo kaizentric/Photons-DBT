@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+- name: bigquery_source
+   
+  schema: MPA_External_Tables
+  description: "MPA Source"
+  tables:
+  - name: bunker-sales-breakdown-monthly
+    description: ''
+models:
+  - name: bunker-sales
