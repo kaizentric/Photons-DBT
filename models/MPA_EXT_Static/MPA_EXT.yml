@@ -1,12 +1,141 @@
 version: 2
 
 sources:
-- name: bigquery_source
-   
-  schema: MPA_External_Tables
-  description: "MPA Source"
-  tables:
-  - name: bunker-sales-breakdown-monthly
-    description: ''
+  - name: bigquery_source
+    database: MPA_External_Tables 
+    schema: MPA_External_Tables
+    description: "MPA Source"
+    tables:
+      - name: bunker-sales-breakdown-monthly
+        description: ""
+
 models:
-  - name: bunker-sales
+  - name: vessel-calls_75_gt_monthly
+    description: >
+      Staging model for monthly vessel calls above 75 GT,
+      sourced from MPA external tables.
+    columns:
+      - name: purpose_type
+        description: Purpose of the vessel call (e.g. Bunkers, Cargo)
+        tests:
+          - not_null
+
+      - name: number_of_vessel_calls
+        description: Number of vessel calls for the reporting month
+        tests:
+          - not_null
+
+      - name: gross_tonnage
+        description: Total gross tonnage of vessels
+        tests:
+          - not_null
+
+      - name: reporting_month_date
+        description: Reporting month date
+        tests:
+          - not_null
+
+      - name: ingested_at
+        description: Timestamp when the record was ingested
+
+  - name: bunker_sales
+    description: >
+      Aggregated monthly bunker sales used for enriching
+      bunker-related vessel calls.
+    columns:
+      - name: sales_date
+        description: Month of bunker sales
+        tests:
+          - not_null
+          - unique
+
+      - name: bunker_sales
+        description: Total bunker sales for the month
+
+  - name: cargo_throughput
+    description: >
+      Aggregated monthly cargo throughput data
+      used for cargo vessel activity analysis.
+    columns:
+      - name: cargo_month_date
+        description: Month of cargo throughput
+        tests:
+          - not_null
+          - unique
+
+      - name: cargo_throughput
+        description: Total cargo throughput for the month
+
+  - name: vessel_calls
+    description: >
+      Fact table combining vessel calls with bunker sales
+      and cargo throughput. Rows where both bunker sales
+      and cargo throughput are NULL are excluded.
+    columns:
+      - name: purpose_type
+        description: Purpose of vessel activity (Bunkers or Cargo)
+        tests:
+          - not_null
+
+      - name: reporting_month_date
+        description: Reporting month date
+        tests:
+          - not_null
+
+      - name: number_of_vessel_calls
+        description: Number of vessel calls for the reporting month
+        tests:
+          - not_null
+
+      - name: gross_tonnage
+        description: Gross tonnage of vessels
+
+      - name: bunker_sales
+        description: Monthly bunker sales (only for Bunkers purpose)
+
+      - name: cargo_throughput
+        description: Monthly cargo throughput (only for Cargo purpose)
+ 
+  - name: container_throughput_shipping_tonnage_monthly
+    description: >
+      Monthly combined view of container throughput and registered shipping tonnage,
+      joined at the reporting month level. This model supports incremental loads
+      based on ingestion timestamps.
+
+    columns:
+      - name: reporting_month_date
+        description: >
+          Reporting month (DATE) derived from either container throughput
+          or shipping tonnage month.
+        tests:
+          - not_null
+
+      - name: container_throughput
+        description: >
+          Total container throughput for the reporting month.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+
+      - name: number_of_vessels
+        description: >
+          Number of registered vessels for the reporting month.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+
+      - name: gross_tonnage
+        description: >
+          Gross tonnage of registered vessels for the reporting month.
+        tests:
+          - dbt_utils.accepted_range:
+              min_value: 0
+              inclusive: true
+
+      - name: ingested_at
+        description: >
+          Timestamp indicating when the record was ingested into BigQuery.
+        tests:
+          - not_null
