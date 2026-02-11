@@ -1,4 +1,4 @@
-{{  
+ {{  
   config(
     materialized = 'incremental',
     schema = 'MPA_External_Tables',

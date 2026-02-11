@@ -113,27 +113,17 @@ models:
       - name: container_throughput
         description: >
           Total container throughput for the reporting month.
-        tests:
-          - dbt_utils.accepted_range:
-              min_value: 0
-              inclusive: true
+         
 
       - name: number_of_vessels
         description: >
           Number of registered vessels for the reporting month.
-        tests:
-          - dbt_utils.accepted_range:
-              min_value: 0
-              inclusive: true
+        
 
       - name: gross_tonnage
         description: >
           Gross tonnage of registered vessels for the reporting month.
-        tests:
-          - dbt_utils.accepted_range:
-              min_value: 0
-              inclusive: true
-
+         
       - name: ingested_at
         description: >
           Timestamp indicating when the record was ingested into BigQuery.

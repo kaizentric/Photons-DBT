@@ -1,0 +1,267 @@
+version: 2
+
+#################################
+# SOURCES
+#################################
+sources:
+  - name: bigquery_source
+    database: MPA
+    schema: MPA
+    description: "MPA Source"
+    tables:
+      - name: aids_to_navigation
+        description: "Raw Aids to Navigation GeoJSON data"
+
+#################################
+# MODELS
+#################################
+models:
+
+  ###############################
+  # STAGING MODELS
+  ###############################
+  - name: stg_mpa_aids_to_navigation
+    description: "Staging table for Aids to Navigation data"
+     
+    columns:
+      - name: lnam
+        description: "Logical name / unique identifier"
+        tests:
+          - not_null
+          - unique
+
+      - name: dsnm
+        description: "Dataset name"
+
+      - name: geometry
+        description: "GEOGRAPHY point created from GeoJSON coordinates"
+        tests:
+          - not_null
+
+      - name: last_mod
+        description: "Last modified timestamp"
+
+      - name: is_delete
+        description: "Soft delete indicator"
+
+  ###############################
+  # DIMENSION MODELS
+  ###############################
+  - name: dim_mpa_navigation_aid
+    description: "Dimension table for navigation aids (buoys, beacons, lights)"
+    
+    columns:
+      - name: navigation_aid_key
+        description: "Surrogate primary key"
+        tests:
+          - not_null
+          - unique
+
+      - name: lnam
+        description: "Source logical name"
+        tests:
+          - not_null
+
+      - name: colour
+        description: "Colour code of navigation aid"
+
+      - name: top_shp
+        description: "Topmark shape"
+
+      - name: status
+        description: "Operational status"
+
+      - name: valid_from
+        description: "SCD valid from date"
+
+      - name: valid_to
+        description: "SCD valid to date"
+
+  ###############################
+  # FACT MODELS
+  ###############################
+  - name: stg_vessel_positions
+    description: "Fact table storing spatial positions of navigation aids"
+     
+    columns:
+      - name: navigation_aid_key
+        description: "Foreign key to dim_mpa_navigation_aid"
+        tests:
+          - not_null
+         
+      - name: observation_date
+        description: "Date of position observation"
+        tests:
+          - not_null
+
+      - name: geom
+        description: "GEOGRAPHY point location"
+        tests:
+          - not_null
+
+      - name: latitude
+        description: "Latitude extracted from geometry"
+
+      - name: longitude
+        description: "Longitude extracted from geometry"
+
+      - name: source_system
+        description: "Source system identifier"
+ 
+  - name: fact_mpa_navigation_position
+    description: >
+      Incremental fact table storing vessel navigation positions.
+      Data is sourced from MPA_VesselPositionsSnapshot and
+      incrementally loaded using ingested_at timestamp.
+
+    config:
+      materialized: incremental
+      unique_key: "imo_number||effective_timestamp"
+      schema: MPA
+
+    columns:
+      - name: imo_number
+        description: Unique IMO number identifying the vessel.
+        tests:
+          - not_null
+
+      - name: vessel_name
+        description: Name of the vessel.
+
+      - name: call_sign
+        description: Vessel radio call sign.
+
+      - name: latitude
+        description: Vessel latitude (decimal degrees).
+
+      - name: longitude
+        description: Vessel longitude (decimal degrees).
+
+      - name: latitude_degrees
+        description: Latitude in degrees format.
+
+      - name: longitude_degrees
+        description: Longitude in degrees format.
+
+      - name: speed
+        description: Vessel speed over ground.
+
+      - name: course
+        description: Vessel course over ground.
+
+      - name: heading
+        description: Vessel heading direction.
+
+      - name: position_timestamp
+        description: Timestamp when the vessel position was recorded.
+        tests:
+          - not_null
+
+      - name: ingested_at
+        description: Timestamp when the record was ingested into BigQuery.
+        tests:
+          - not_null
+ 
+  - name: fact_vessel_positions
+    description: >
+      Incremental fact table storing enriched vessel position data.
+      Combines staging vessel positions with vessel dimension data.
+      Loads incrementally based on position_timestamp.
+
+    config:
+      materialized: incremental
+      unique_key: ["imo_number", "position_timestamp"]
+      schema: MPA
+      tags: ["skip"]
+
+    columns:
+      - name: imo_number
+        description: Unique IMO number identifying the vessel.
+        tests:
+          - not_null
+
+      - name: vessel_name
+        description: Vessel name from dimension table.
+
+      - name: position_timestamp
+        description: Timestamp when the vessel position was recorded.
+        tests:
+          - not_null
+
+      - name: latitude
+        description: Vessel latitude in decimal degrees.
+        tests:
+          - not_null
+
+      - name: longitude
+        description: Vessel longitude in decimal degrees.
+        tests:
+          - not_null
+
+      - name: speed
+        description: Speed over ground.
+
+      - name: course
+        description: Course over ground.
+
+      - name: heading
+        description: Vessel heading.
+ 
+  - name: stg_vessel_positions   # 👈 Must match your SQL file name
+    description: >
+      Incremental staging model loading vessel position snapshots
+      from MPA_VesselPositionsSnapshot table.
+      Loads new records based on ingested_at.
+
+    config:
+      materialized: incremental
+      schema: MPA
+      unique_key: ["imo_number", "effective_timestamp"]
+      tags: ["skip"]
+
+    columns:
+      - name: imo_number
+        description: Unique IMO number identifying the vessel.
+        tests:
+          - not_null
+
+      - name: vessel_name
+        description: Vessel name.
+
+      - name: call_sign
+        description: Vessel call sign.
+
+      - name: latitude
+        description: Latitude in decimal degrees.
+        tests:
+          - not_null
+
+      - name: longitude
+        description: Longitude in decimal degrees.
+        tests:
+          - not_null
+
+      - name: latitude_degrees
+        description: Latitude in degrees format.
+
+      - name: longitude_degrees
+        description: Longitude in degrees format.
+
+      - name: speed
+        description: Vessel speed over ground.
+
+      - name: course
+        description: Course over ground.
+
+      - name: heading
+        description: Vessel heading.
+
+      - name: position_timestamp
+        description: Timestamp when vessel position was recorded.
+        tests:
+          - not_null
+
+      - name: ingested_at
+        description: Timestamp when record was ingested.
+        tests:
+          - not_null
